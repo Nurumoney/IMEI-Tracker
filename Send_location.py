@@ -4,7 +4,7 @@ import geocoder
 import uuid
 
 API_TOKEN = "supersecrettoken123"
-SERVER_URL = "http://127.0.0.1:5000/update_location"
+SERVER_URL = "https://imei-tracker.onrender.com"
 
 # Generate a pseudo-IMEI (or use any other unique identifier)
 DEVICE_ID = str(uuid.uuid4())
