@@ -1,16 +1,16 @@
-from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit
-import time
+from flask import Flask, request, render_template
+from flask_socketio import SocketIO
 from flask_cors import CORS
+import time
+import os
 
-app = Flask(__name__) # Corrected: '__name__' has double underscores
+app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*")
 CORS(app)
 
-# In-memory database for storing IMEI locations
 location_db = {}
-AUTH_TOKEN = "supersecrettoken123"
+AUTH_TOKEN = os.environ.get("API_TOKEN", "supersecrettoken123")
 
 @app.route('/')
 def index():
@@ -27,17 +27,13 @@ def update_location():
     imei = data.get("imei")
     lat = data.get("latitude")
     lon = data.get("longitude")
-    timestamp = time.time()
 
     if not imei or lat is None or lon is None:
         return {"status": "bad request"}, 400
 
-    location_db[imei] = {"lat": lat, "lon": lon, "timestamp": timestamp}
+    location_db[imei] = {"lat": lat, "lon": lon, "timestamp": time.time()}
+    socketio.emit('location_update', {"imei": imei, "latitude": lat, "longitude": lon})
+    return {"status": "success"}
 
-    # Emit new location via WebSocket
-    socketio.emit('location_update', {"imei": imei, "lat": lat, "lon": lon})
-    return {"status": "success"}, 200
-
-if __name__ == '__main__': # Corrected: '__name__' has double underscores
-    socketio.run(app, debug=True)
-
+if __name__ == '__main__':
+    socketio.run(app, host="0.0.0.0", port=5000)
