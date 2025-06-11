@@ -1,5 +1,5 @@
-Flask
-Flask-SocketIO
-Flask-CORS
-requests
-geocoder
+flask
+flask-cors
+flask-socketio
+eventlet
+gunicorn
