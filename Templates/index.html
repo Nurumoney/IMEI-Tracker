@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>IMEI Live Location Tracker</title>
+  <meta charset="utf-8" />
+  <style>
+    #map { height: 400px; width: 100%; margin-top: 10px; }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    input[type="text"], input[type="password"] {
+      padding: 8px; width: 300px; font-size: 16px;
+      border: 1px solid #ccc; border-radius: 4px;
+      margin-right: 10px;
+    }
+    button {
+      padding: 8px 16px; font-size: 16px;
+    }
+    #status { margin-top: 10px; }
+  </style>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+<body>
+
+  <h1>IMEI Live Location Tracker</h1>
+
+  <input type="text" id="imeiInput" placeholder="Enter IMEI number" />
+  <input type="password" id="tokenInput" placeholder="Enter API Token" />
+  <button onclick="startTracking()">Track</button>
+
+  <div id="status"></div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    let map = L.map('map').setView([0, 0], 2);
+    let marker = null;
+    let intervalId = null;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    function startTracking() {
+      const imei = document.getElementById('imeiInput').value.trim();
+      const token = document.getElementById('tokenInput').value.trim();
+      const statusDiv = document.getElementById('status');
+
+      if (!imei) {
+        alert('Please enter an IMEI number.');
+        return;
+      }
+      if (!token) {
+        alert('Please enter the API token.');
+        return;
+      }
+
+      if (intervalId) clearInterval(intervalId);
+
+      statusDiv.textContent = 'Tracking IMEI: ' + imei;
+
+      function fetchLocation() {
+        fetch(`/get_location/${imei}`, {
+          headers: {
+            'Authorization': 'Bearer ' + token
+          }
+        })
+          .then(res => {
+            if (!res.ok) throw new Error('IMEI not found or unauthorized');
+            return res.json();
+          })
+          .then(data => {
+            const { latitude, longitude } = data.location;
+
+            if (!marker) {
+              marker = L.marker([latitude, longitude]).addTo(map);
+              map.setView([latitude, longitude], 15);
+            } else {
+              marker.setLatLng([latitude, longitude]);
+              map.panTo([latitude, longitude]);
+            }
+
+            statusDiv.textContent = `IMEI: ${imei} — Lat: ${latitude.toFixed(6)}, Lon: ${longitude.toFixed(6)}`;
+          })
+          .catch(err => {
+            statusDiv.textContent = err.message;
+            if (marker) {
+              map.removeLayer(marker);
+              marker = null;
+            }
+          });
+      }
+
+      fetchLocation();
+      intervalId = setInterval(fetchLocation, 5000);
+    }
+  </script>
+
+</body>
+  </html>
