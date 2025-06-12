@@ -6,33 +6,63 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
   <style>
-    #map { height: 100vh; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    #controls { padding: 10px; background: #f4f4f4; border-bottom: 1px solid #ccc; }
+    #map { height: calc(100vh - 60px); }
+    input { padding: 6px; margin-right: 10px; }
   </style>
 </head>
 <body>
+
+  <div id="controls">
+    <input id="tokenInput" placeholder="Enter token (Bearer...)" />
+    <input id="imeiFilter" placeholder="Filter by IMEI (optional)" />
+    <button onclick="connect()">Start Tracking</button>
+    <a href="/download_csv" target="_blank"><button>Download CSV Log</button></a>
+  </div>
+
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    const socket = io();
-
-    const map = L.map('map').setView([0, 0], 2); // default center
+    let map = L.map('map').setView([0, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
     }).addTo(map);
 
     let marker;
+    let selectedIMEI = "";
+    let socket;
 
-    socket.on('location_update', data => {
-      const { latitude, longitude, imei } = data;
-      if (marker) {
-        marker.setLatLng([latitude, longitude]);
-      } else {
-        marker = L.marker([latitude, longitude]).addTo(map);
+    function connect() {
+      const token = document.getElementById('tokenInput').value.trim();
+      selectedIMEI = document.getElementById('imeiFilter').value.trim();
+
+      if (!token) {
+        alert("Authorization token is required.");
+        return;
       }
-      marker.bindPopup(`IMEI: ${imei}`).openPopup();
-      map.setView([latitude, longitude], 15);
-    });
+
+      socket = io({
+        extraHeaders: {
+          Authorization: token
+        }
+      });
+
+      socket.on('location_update', data => {
+        const { latitude, longitude, imei } = data;
+        if (selectedIMEI && imei !== selectedIMEI) return;
+
+        if (marker) {
+          marker.setLatLng([latitude, longitude]);
+        } else {
+          marker = L.marker([latitude, longitude]).addTo(map);
+        }
+
+        marker.bindPopup(`IMEI: ${imei}`).openPopup();
+        map.setView([latitude, longitude], 15);
+      });
+    }
   </script>
 </body>
 </html>
